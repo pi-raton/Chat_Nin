@@ -1,0 +1,247 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Chat-NIN</title>
+
+<style>
+:root{
+  --orange-strong:#ff7a00;
+  --orange-soft:#ffd2a8;
+  --white:#ffffff;
+  --gray:#f5f5f5;
+  --text:#333;
+}
+
+/* BOTÓN FLOTANTE */
+.chat-float-btn{
+  position: fixed;
+  bottom: 60px;
+  right: 20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--orange-soft);
+  border-color: black;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,0,0,.3);
+  z-index: 9999;
+}
+
+.chat-float-btn img{
+  width: 36px;
+}
+
+/* CONTENEDOR CHAT */
+.chat-container{
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 360px;
+  height: 520px;
+  background: var(--white);
+  background-color:#ff7a00;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.3);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 9999;
+  border: 2px solid var(--orange-strong);
+
+  /* ANIMACIÓN */
+  transform: scale(0.85);
+  opacity: 0;
+  transition: transform .3s ease, opacity .3s ease;
+}
+
+.chat-container.show{
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* HEADER */
+.chat-header{
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ff7a00;
+  border-bottom: 3px solid var(--orange-strong);
+}
+
+.chat-header img{
+  height: 80px;
+}
+
+/* BOTÓN CERRAR */
+.close-btn{
+  background: transparent;
+  border: orange;
+  font-size: 22px;
+  font-weight: bold;
+  cursor: pointer;
+  color: black;
+}
+
+/* MENSAJES */
+.chat-messages{
+  flex: 1;
+  padding: 12px;
+  background: var(--gray);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.message{
+  max-width: 80%;
+  padding: 10px 14px;
+  margin: 6px 0;
+  border-radius: 14px;
+  font-size: 14px;
+  animation: fadeIn .25s ease;
+}
+
+@keyframes fadeIn{
+  from{opacity:0; transform: translateY(6px);}
+  to{opacity:1; transform: translateY(0);}
+}
+
+.user{
+  align-self: flex-start;
+  background: var(--orange-strong);
+  color: white;
+  border-bottom-left-radius: 4px;
+}
+
+.bot{
+  align-self: flex-end;
+  background: var(--orange-soft);
+  color: var(--text);
+  border-bottom-right-radius: 4px;
+}
+
+.message img{
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 2px solid var(--orange-strong);
+}
+
+/* INPUT */
+.chat-input{
+  display: flex;
+  padding: 10px;
+  border-top: 2px solid var(--orange-strong);
+}
+
+.chat-input input{
+  flex: 1;
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.chat-input button{
+  margin-left: 8px;
+  padding: 0 16px;
+  border-radius: 50%;
+  border-color: black;
+  background: var(--orange-soft);
+  color: black;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<!-- BOTÓN FLOTANTE -->
+<button class="chat-float-btn" onclick="toggleChat()">
+<img src="imagen/logo_circular.png" alt="Chat">
+</button>
+
+<!-- CHAT -->
+<div id="chat" class="chat-container">
+
+  <div class="chat-header">
+    <img src="imagen/NinEncabezado.png" alt="Logo">
+    <button class="close-btn" onclick="toggleChat()">✕</button>
+  </div>
+
+  <div id="messages" class="chat-messages"></div>
+
+  <div class="chat-input">
+    <input id="text" placeholder="Ej: galleta, chocolates">
+    <button onclick="send()">Enviar</button>
+  </div>
+
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzNl4LJL67D105qj0BP7JComYzm2QxHbGag5L-6DNDnfBysS2uLSjtGmrCRLqfLVQLk/exec";
+let welcomeShown = false;
+
+function toggleChat(){
+  const chat = document.getElementById("chat");
+
+  if(chat.style.display === "flex"){
+    chat.classList.remove("show");
+    setTimeout(()=> chat.style.display="none", 200);
+  }else{
+    chat.style.display = "flex";
+    setTimeout(()=> chat.classList.add("show"), 10);
+
+    if(!welcomeShown){
+      setTimeout(()=>{
+        addMessage(
+          "👋 Hola! Soy Nin tu asistente.<br>Escribí una palabra y te muestro todos los productos relacionados.<br><br>Ejemplo: <b>galletas</b>, <b>dulces</b>, <b>etc.</b>",
+          "bot"
+        );
+      },300);
+      welcomeShown = true;
+    }
+  }
+}
+
+function send(){
+  const input = document.getElementById("text");
+  const msg = input.value.trim();
+  if(!msg) return;
+
+  addMessage(msg,"user");
+  input.value="";
+
+  fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({message:msg})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    data.forEach(p=>{
+      addMessage(p.texto,"bot",p.imagen);
+    });
+  })
+  .catch(()=>{
+    addMessage("⚠️ Error al consultar productos.","bot");
+  });
+}
+
+function addMessage(text,type,image=""){
+  const box=document.getElementById("messages");
+  const div=document.createElement("div");
+  div.className="message "+type;
+
+  let html=text.replace(/\n/g,"<br>");
+  if(image) html+=`<img src="${image}">`;
+
+  div.innerHTML=html;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+</script>
+
+</body>
+</html>
